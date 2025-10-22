@@ -6,9 +6,10 @@ library(msigdbr)
 library(DESeq2)
 library(fgsea)
 library(GSVA)
-library(EnhancedVolcano)
+# library(EnhancedVolcano)
 library(RColorBrewer)
 library(pheatmap)
+library(scales)
 
 
 # prepare gene sets for gsea ----
@@ -45,6 +46,9 @@ dds <- dds[keep,]
 
 ### DE analysis
 dds <- DESeq(dds)
+
+normalized_cts <- counts(dds, normalized=TRUE)
+
 
 ### PCA plot
 # vst = varianceStabilizingTransformation(dds)
@@ -322,8 +326,12 @@ anno_col <- data.frame(row.names = colnames(cts), stomach = factor(rep(genotype,
 gsvaPar <- gsvaParam(assay(vst), collections$H, kcdf = "Gaussian")
 gsva.es <- gsva(gsvaPar, verbose=FALSE)
 rownames(gsva.es) <- sub("HALLMARK_", "", rownames(gsva.es))
+st_colors <- rep(hue_pal()(5))
+names(st_colors) <- genotype
+ann_colors = list(stomach = st_colors)
 hm <- pheatmap(gsva.es, annotation_col = anno_col, show_colnames = FALSE, fontsize_row = 7.5, cluster_cols = FALSE,
-               color=colorRampPalette(c("blue", "white", "red"))(100))
+               color=colorRampPalette(c("blue", "white", "red"))(100),
+               annotation_colors = ann_colors)
 save_pheatmap_pdf <- function(x, filename, width = 6, height = 6) {
   stopifnot(!missing(x))
   stopifnot(!missing(filename))
@@ -335,17 +343,17 @@ save_pheatmap_pdf <- function(x, filename, width = 6, height = 6) {
 save_pheatmap_pdf(hm, "plots/stomach/GSVA_DESeq2-vst.pdf")
 
 ### gsva and heatmap from TPM (from the CLC output excel file)
-X <- read.delim(file = "data/Bulk_stomach_T1PTC_project_CPM.txt", header = TRUE, sep = "\t") %>% column_to_rownames(var = "Name")
-colnames(X) <- c("WT1", "WT2", "PT1", "PT2", "PC1", "PC2", "TC1", "TC2", "PTC1", "PTC2")
-keep <- rowSums(X > 0) >= 2
-X <- X[keep,]
-X <- log2(X+1)
-gsvaPar <- gsvaParam(as.matrix(X), collections$H, kcdf = "Gaussian")
-gsva.es <- gsva(gsvaPar, verbose=FALSE)
-rownames(gsva.es) <- sub("HALLMARK_", "", rownames(gsva.es))
-hm <- pheatmap(gsva.es, annotation_col = anno_col, show_colnames = FALSE, fontsize_row = 7.5, cluster_cols = FALSE,
-               color=colorRampPalette(c("blue", "white", "red"))(100))
-save_pheatmap_pdf(hm, "plots/stomach/GSVA_TPM.pdf")
+# X <- read.delim(file = "data/Bulk_stomach_T1PTC_project_CPM.txt", header = TRUE, sep = "\t") %>% column_to_rownames(var = "Name")
+# colnames(X) <- c("WT1", "WT2", "PT1", "PT2", "PC1", "PC2", "TC1", "TC2", "PTC1", "PTC2")
+# keep <- rowSums(X > 0) >= 2
+# X <- X[keep,]
+# X <- log2(X+1)
+# gsvaPar <- gsvaParam(as.matrix(X), collections$H, kcdf = "Gaussian")
+# gsva.es <- gsva(gsvaPar, verbose=FALSE)
+# rownames(gsva.es) <- sub("HALLMARK_", "", rownames(gsva.es))
+# hm <- pheatmap(gsva.es, annotation_col = anno_col, show_colnames = FALSE, fontsize_row = 7.5, cluster_cols = FALSE,
+#                color=colorRampPalette(c("blue", "white", "red"))(100))
+# save_pheatmap_pdf(hm, "plots/stomach/GSVA_TPM.pdf")
 
 
 # common DEs ----

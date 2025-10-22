@@ -6,11 +6,11 @@ library(msigdbr)
 library(DESeq2)
 library(fgsea)
 library(GSVA)
-library(EnhancedVolcano)
+# library(EnhancedVolcano)
 library(RColorBrewer)
 library(pheatmap)
 library(VennDiagram)
-
+library(scales)
 
 # prepare gene sets for gsea ----
 collections <- list()
@@ -368,8 +368,12 @@ anno_col <- data.frame(row.names = colnames(cts), organoid = factor(rep(genotype
 gsvaPar <- gsvaParam(assay(vst), collections$H, kcdf = "Gaussian")
 gsva.es <- gsva(gsvaPar, verbose=FALSE)
 rownames(gsva.es) <- sub("HALLMARK_", "", rownames(gsva.es))
+st_colors <- rep(hue_pal()(5))
+names(st_colors) <- genotype
+ann_colors = list(organoid = st_colors)
 hm <- pheatmap(gsva.es, annotation_col = anno_col, show_colnames = FALSE, fontsize_row = 7.5, cluster_cols = FALSE,
-               color=colorRampPalette(c("blue", "white", "red"))(100))
+               color=colorRampPalette(c("blue", "white", "red"))(100),
+               annotation_colors = ann_colors)
 save_pheatmap_pdf <- function(x, filename, width = 6, height = 6) {
   stopifnot(!missing(x))
   stopifnot(!missing(filename))
