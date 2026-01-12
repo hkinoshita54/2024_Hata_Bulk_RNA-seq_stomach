@@ -1,3 +1,7 @@
+# Continued from 021_clustering_epi_PC&PTC.R
+# Without integration
+analysis_step <- "010_stomach"
+
 # Load packages ----
 library(tidyverse)
 library(ggplot2)
@@ -7,10 +11,13 @@ library(DESeq2)
 library(fgsea)
 library(GSVA)
 # library(EnhancedVolcano)
-library(RColorBrewer)
+library(scico)
 library(pheatmap)
-library(scales)
 
+# Make directories ----
+plot_path <- file.path("plot", analysis_step)
+res_path <- file.path("result", analysis_step)
+fs::dir_create(c(plot_path, res_path))
 
 # prepare gene sets for gsea ----
 collections <- list()
@@ -55,12 +62,52 @@ normalized_cts <- counts(dds, normalized=TRUE)
 vst = vst(dds)
 pcaData <- plotPCA(vst, intgroup = "condition", returnData = TRUE)
 percentVar <- round(100 * attr(pcaData, "percentVar"))
+
+genotype_col <- c(
+  "WT"  = "#999999",
+  "PT"  = "#56B4E9",
+  "PC"  = "#009E73",
+  "TC"  = "#E69F00",
+  "PTC" = "#CC79A7"
+)
+
 ggplot(pcaData, aes(PC1, PC2, color=condition)) +
   geom_point(size=3) +
-  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-  ylab(paste0("PC2: ",percentVar[2],"% variance")) + 
-  coord_fixed() +
-  theme_bw()
+  xlab(paste0("PC1: ",percentVar[1],"% var.")) +
+  ylab(paste0("PC2: ",percentVar[2],"% var.")) + 
+  # coord_fixed() +
+  theme_bw(base_size = 14) +
+  scale_color_manual("Genotype", values = genotype_col)
+ggsave(filename = "pca.png", path = plot_path, width = 3.5, height = 2, dpi = 300) 
+
+# GSVA ----
+
+### column annotation
+genotype <- c("WT", "PT", "PC", "TC", "PTC")
+anno_col <- data.frame(row.names = colnames(cts), stomach = factor(rep(genotype, each = 2), levels = genotype))
+
+### gsva and heatmap from DESeq2 (normalized by vst)
+gsvaPar <- gsvaParam(assay(vst), collections$H, kcdf = "Gaussian")
+gsva.es <- gsva(gsvaPar, verbose=FALSE)
+rownames(gsva.es) <- sub("HALLMARK_", "", rownames(gsva.es))
+st_colors <- genotype_col
+names(st_colors) <- genotype
+ann_colors = list(stomach = st_colors)
+
+hm <- pheatmap(gsva.es, annotation_col = anno_col, show_colnames = FALSE, fontsize_row = 7.5, cluster_cols = FALSE,
+               color=colorRampPalette(scico(9, palette = "vik"))(100),
+               annotation_colors = ann_colors)
+save_pheatmap_pdf <- function(x, filename, width = 6, height = 6) {
+  stopifnot(!missing(x))
+  stopifnot(!missing(filename))
+  pdf(filename, width=width, height=height)
+  grid::grid.newpage()
+  grid::grid.draw(x$gtable)
+  dev.off()
+}
+save_pheatmap_pdf(hm, file.path(plot_path, "GSVA_DESeq2-vst.pdf"))
+
+
 
 # PTC vs PC ----
 
@@ -316,31 +363,7 @@ ggplot(fgseaResDn, aes(x = NES, y = reorder(pathway, NES, decreasing = TRUE))) +
         axis.text = element_text(size = 8, color = "black"))
 ggsave(paste0("GSEA_H_Dn_", description, ".png"), path = "plots/stomach", width = 3.5, height = 0.5 + nrow(fgseaResDn)/8, units = "in", dpi = 300)
 
-# GSVA ----
 
-### column annotation
-genotype <- c("WT", "PT", "PC", "TC", "PTC")
-anno_col <- data.frame(row.names = colnames(cts), stomach = factor(rep(genotype, each = 2), levels = genotype))
-
-### gsva and heatmap from DESeq2 (normalized by vst)
-gsvaPar <- gsvaParam(assay(vst), collections$H, kcdf = "Gaussian")
-gsva.es <- gsva(gsvaPar, verbose=FALSE)
-rownames(gsva.es) <- sub("HALLMARK_", "", rownames(gsva.es))
-st_colors <- rep(hue_pal()(5))
-names(st_colors) <- genotype
-ann_colors = list(stomach = st_colors)
-hm <- pheatmap(gsva.es, annotation_col = anno_col, show_colnames = FALSE, fontsize_row = 7.5, cluster_cols = FALSE,
-               color=colorRampPalette(c("blue", "white", "red"))(100),
-               annotation_colors = ann_colors)
-save_pheatmap_pdf <- function(x, filename, width = 6, height = 6) {
-  stopifnot(!missing(x))
-  stopifnot(!missing(filename))
-  pdf(filename, width=width, height=height)
-  grid::grid.newpage()
-  grid::grid.draw(x$gtable)
-  dev.off()
-}
-save_pheatmap_pdf(hm, "plots/stomach/GSVA_DESeq2-vst.pdf")
 
 ### gsva and heatmap from TPM (from the CLC output excel file)
 # X <- read.delim(file = "data/Bulk_stomach_T1PTC_project_CPM.txt", header = TRUE, sep = "\t") %>% column_to_rownames(var = "Name")
