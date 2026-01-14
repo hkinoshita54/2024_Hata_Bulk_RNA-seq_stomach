@@ -13,6 +13,7 @@ library(GSVA)
 # library(EnhancedVolcano)
 library(scico)
 library(pheatmap)
+source("Rscripts/theme_panel.R")
 
 # Make directories ----
 plot_path <- file.path("plot", analysis_step)
@@ -72,13 +73,12 @@ genotype_col <- c(
 )
 
 ggplot(pcaData, aes(PC1, PC2, color=condition)) +
-  geom_point(size=3) +
+  geom_point(size=2.5) +
   xlab(paste0("PC1: ",percentVar[1],"% var.")) +
   ylab(paste0("PC2: ",percentVar[2],"% var.")) + 
-  # coord_fixed() +
-  theme_bw(base_size = 14) +
+  theme_panel() +
   scale_color_manual("Genotype", values = genotype_col)
-ggsave(filename = "pca.png", path = plot_path, width = 3.5, height = 2, dpi = 300) 
+ggsave(filename = "pca.pdf", path = plot_path, width = 60, height = 30, units = "mm") 
 
 # GSVA ----
 
